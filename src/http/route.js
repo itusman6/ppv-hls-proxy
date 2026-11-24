@@ -3,26 +3,14 @@ import { relayHls } from '../relay/hls.js'
 import { resolveStream } from '../resolve/stream.js'
 import { resolveEmbedStreamUrl } from '../embed/decrypt.js'
 import { generatePlaylist, resolveLiveChannel } from '../playlist/iptv.js'
-import { getPublicOrigin } from './origin.js'
 import { json, readBody, text } from './respond.js'
 import { serveStatic } from './static.js'
 
 export async function onReq(req, res) {
   if (!req.headers.host) return text(res, 400, 'missing host')
 
-  // IMPORTANT: derive the *public* origin (honours X-Forwarded-Proto / Host)
-  // so the URLs we emit match the scheme the browser actually used. Using
-  // `http://${req.headers.host}` here is what produced the Mixed Content
-  // blocks when the app was served behind an HTTPS reverse proxy.
-  const origin = getPublicOrigin(req)
-
-  let loc
-  try {
-    loc = new URL(req.url ?? '/', origin)
-  } catch {
-    return text(res, 400, 'bad request url')
-  }
-  const { pathname, searchParams } = loc
+  const loc = new URL(req.url ?? '/', `http://${req.headers.host}`)
+  const { pathname, searchParams, origin } = loc
 
   try {
     if (pathname === '/api/hls') {
@@ -47,14 +35,11 @@ export async function onReq(req, res) {
       const body = await readBody(req).catch(() => null)
       const iframeUrl = body?.iframe
       if (!iframeUrl) return json(res, 400, { error: 'iframe url required' })
-
+      
       try {
         const embed = embedFromSource({ data: iframeUrl })
         const streamUrl = await resolveEmbedStreamUrl(embed)
-        const proxiedUrl =
-          `${origin}/api/hls?url=${encodeURIComponent(streamUrl)}` +
-          `&embed=${encodeURIComponent(embed.path)}` +
-          `&embedOrigin=${encodeURIComponent(embed.origin)}`
+        const proxiedUrl = `${origin}/api/hls?url=${encodeURIComponent(streamUrl)}&embed=${encodeURIComponent(embed.path)}&embedOrigin=${encodeURIComponent(embed.origin)}`
         return json(res, 200, {
           ok: true,
           streamUrl,
