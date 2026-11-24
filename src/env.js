@@ -1,4 +1,4 @@
-export const port = Number(process.env.PORT) || 3000
+export const port = Number(process.env.PORT)
 
 // API domain failover chain — tried in order until one responds
 export const API_DOMAINS = [
