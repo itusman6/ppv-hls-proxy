@@ -6,15 +6,21 @@ const srv = http.createServer(onReq)
 
 function boot() {
   const addr = srv.address()
-  const host = typeof addr === 'string' ? addr : `localhost:${addr.port}`
-  console.log(`listening on http://${host}/`)
+  // If addr is an object (which it is when listening on IPs), read the port
+  const actualPort = typeof addr === 'string' ? addr : addr.port
+  
+  // Determine the host we actually bound to
+  const hostToPrint = process.env.HOST || '0.0.0.0'
+  console.log(`listening on http://${hostToPrint}:${actualPort}/`)
 }
 
 // Increase header size tolerance in case a proxy forwards large cookies/URLs.
 srv.headersTimeout = 65_000
 srv.requestTimeout = 0 // no timeout — HLS relays are long-lived
 
+// Bind to 0.0.0.0 so Enzonic's proxy can reach it
 const host = process.env.HOST || '0.0.0.0'
+
 srv.listen(port, host, boot)
 
 // Graceful shutdown so tunnels/proxies can drain in-flight relays.
