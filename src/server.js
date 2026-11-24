@@ -14,8 +14,8 @@ function boot() {
 srv.headersTimeout = 65_000
 srv.requestTimeout = 0 // no timeout — HLS relays are long-lived
 
-if (process.env.HOST) srv.listen(port, process.env.HOST, boot)
-else srv.listen(port, boot)
+const host = process.env.HOST || '0.0.0.0'
+srv.listen(port, host, boot)
 
 // Graceful shutdown so tunnels/proxies can drain in-flight relays.
 for (const sig of ['SIGINT', 'SIGTERM']) {
